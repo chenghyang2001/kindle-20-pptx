@@ -13,6 +13,24 @@
   #zoom-badge { background: #334155; color: #94a3b8; font-size: 11px; padding: 2px 8px; border-radius: 4px; min-width: 48px; text-align: center; }
   #counter { font-size: 12px; color: #64748b; white-space: nowrap; }
   #hint { font-size: 11px; color: #475569; white-space: nowrap; }
+  /* autoplay controls */
+  #autoplay-wrap { position: relative; display: flex; align-items: center; }
+  #autoplay-btn { background: #1e3a5f; border: 1px solid #38bdf8; border-right: none; border-radius: 6px 0 0 6px; padding: 4px 10px; cursor: pointer; color: #e0f2fe; font-size: 12px; white-space: nowrap; transition: background .15s; }
+  #autoplay-btn:hover { background: #1e4a7f; }
+  #autoplay-btn.playing { background: #7f1d1d; border-color: #f87171; color: #fca5a5; }
+  #autoplay-btn.playing:hover { background: #991b1b; }
+  #autoplay-drop-btn { background: #1e3a5f; border: 1px solid #38bdf8; border-radius: 0 6px 6px 0; padding: 4px 8px; cursor: pointer; color: #e0f2fe; font-size: 11px; transition: background .15s; }
+  #autoplay-drop-btn:hover { background: #1e4a7f; }
+  #autoplay-menu { position: absolute; top: calc(100% + 4px); right: 0; background: #1e293b; border: 1px solid #334155; border-radius: 8px; min-width: 150px; box-shadow: 0 8px 24px rgba(0,0,0,.6); z-index: 999; display: none; overflow: hidden; }
+  #autoplay-menu.open { display: block; }
+  .ap-item { display: flex; align-items: center; gap: 8px; padding: 9px 14px; cursor: pointer; font-size: 12px; color: #94a3b8; transition: background .1s; }
+  .ap-item:hover { background: #334155; color: #e2e8f0; }
+  .ap-item.selected { color: #38bdf8; }
+  .ap-check { width: 12px; text-align: center; flex-shrink: 0; }
+  .ap-divider { height: 1px; background: #334155; margin: 2px 0; }
+  /* progress bar */
+  #progress-bar-wrap { height: 3px; background: #1e293b; flex-shrink: 0; }
+  #progress-bar { height: 3px; background: #38bdf8; width: 0%; }
   #main { display: flex; flex: 1; overflow: hidden; }
   #sidebar { width: 180px; flex-shrink: 0; background: #1e293b; border-right: 1px solid #334155; overflow-y: auto; padding: 8px 6px; display: flex; flex-direction: column; gap: 4px; }
   .grp-btn { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 10px; cursor: pointer; text-align: left; color: #94a3b8; font-size: 12px; transition: all .15s; display: flex; flex-direction: column; gap: 3px; width: 100%; }
@@ -36,8 +54,21 @@
   <span id="breadcrumb">—</span>
   <span id="zoom-badge">100%</span>
   <span id="counter">1 / 1</span>
-  <span id="hint">← → 換頁 · 滾輪縮放 · 拖曳平移 · 雙擊還原</span>
+  <span id="hint">← → 換頁 · 空白鍵播放 · 滾輪縮放 · 拖曳平移 · 雙擊還原</span>
+  <div id="autoplay-wrap">
+    <button id="autoplay-btn" onclick="toggleAutoplay()">&#9654; 自動播放</button>
+    <button id="autoplay-drop-btn" onclick="toggleMenu(event)">&#9660;</button>
+    <div id="autoplay-menu">
+      <div class="ap-item selected" data-sec="3" onclick="setDelay(3,this)"><span class="ap-check">&#10003;</span>每隔 3 秒</div>
+      <div class="ap-item" data-sec="10" onclick="setDelay(10,this)"><span class="ap-check"></span>每隔 10 秒</div>
+      <div class="ap-item" data-sec="15" onclick="setDelay(15,this)"><span class="ap-check"></span>每隔 15 秒</div>
+      <div class="ap-item" data-sec="30" onclick="setDelay(30,this)"><span class="ap-check"></span>每隔 30 秒</div>
+      <div class="ap-divider"></div>
+      <div class="ap-item" id="loop-item" onclick="toggleLoop()"><span class="ap-check" id="loop-check">&#9745;</span>循環播放</div>
+    </div>
+  </div>
 </div>
+<div id="progress-bar-wrap"><div id="progress-bar"></div></div>
 <div id="main">
   <div id="sidebar"></div>
   <div id="viewer-col">
@@ -49,13 +80,99 @@
 const GROUPS = [{"key": "ch1", "label": "第1章 設計基礎", "count": 14, "images": [{"file": "ch1/png/ch1-p001.png", "label": "第1章 設計基礎 - P01/14"}, {"file": "ch1/png/ch1-p002.png", "label": "第1章 設計基礎 - P02/14"}, {"file": "ch1/png/ch1-p003.png", "label": "第1章 設計基礎 - P03/14"}, {"file": "ch1/png/ch1-p004.png", "label": "第1章 設計基礎 - P04/14"}, {"file": "ch1/png/ch1-p005.png", "label": "第1章 設計基礎 - P05/14"}, {"file": "ch1/png/ch1-p006.png", "label": "第1章 設計基礎 - P06/14"}, {"file": "ch1/png/ch1-p007.png", "label": "第1章 設計基礎 - P07/14"}, {"file": "ch1/png/ch1-p008.png", "label": "第1章 設計基礎 - P08/14"}, {"file": "ch1/png/ch1-p009.png", "label": "第1章 設計基礎 - P09/14"}, {"file": "ch1/png/ch1-p010.png", "label": "第1章 設計基礎 - P10/14"}, {"file": "ch1/png/ch1-p011.png", "label": "第1章 設計基礎 - P11/14"}, {"file": "ch1/png/ch1-p012.png", "label": "第1章 設計基礎 - P12/14"}, {"file": "ch1/png/ch1-p013.png", "label": "第1章 設計基礎 - P13/14"}, {"file": "ch1/png/ch1-p014.png", "label": "第1章 設計基礎 - P14/14"}]}, {"key": "ch2", "label": "第2章 Hooks 自動化", "count": 16, "images": [{"file": "ch2/png/ch2-p001.png", "label": "第2章 Hooks 自動化 - P01/16"}, {"file": "ch2/png/ch2-p002.png", "label": "第2章 Hooks 自動化 - P02/16"}, {"file": "ch2/png/ch2-p003.png", "label": "第2章 Hooks 自動化 - P03/16"}, {"file": "ch2/png/ch2-p004.png", "label": "第2章 Hooks 自動化 - P04/16"}, {"file": "ch2/png/ch2-p005.png", "label": "第2章 Hooks 自動化 - P05/16"}, {"file": "ch2/png/ch2-p006.png", "label": "第2章 Hooks 自動化 - P06/16"}, {"file": "ch2/png/ch2-p007.png", "label": "第2章 Hooks 自動化 - P07/16"}, {"file": "ch2/png/ch2-p008.png", "label": "第2章 Hooks 自動化 - P08/16"}, {"file": "ch2/png/ch2-p009.png", "label": "第2章 Hooks 自動化 - P09/16"}, {"file": "ch2/png/ch2-p010.png", "label": "第2章 Hooks 自動化 - P10/16"}, {"file": "ch2/png/ch2-p011.png", "label": "第2章 Hooks 自動化 - P11/16"}, {"file": "ch2/png/ch2-p012.png", "label": "第2章 Hooks 自動化 - P12/16"}, {"file": "ch2/png/ch2-p013.png", "label": "第2章 Hooks 自動化 - P13/16"}, {"file": "ch2/png/ch2-p014.png", "label": "第2章 Hooks 自動化 - P14/16"}, {"file": "ch2/png/ch2-p015.png", "label": "第2章 Hooks 自動化 - P15/16"}, {"file": "ch2/png/ch2-p016.png", "label": "第2章 Hooks 自動化 - P16/16"}]}, {"key": "ch3", "label": "第3章 子代理控制", "count": 18, "images": [{"file": "ch3/png/ch3-p001.png", "label": "第3章 子代理控制 - P01/18"}, {"file": "ch3/png/ch3-p002.png", "label": "第3章 子代理控制 - P02/18"}, {"file": "ch3/png/ch3-p003.png", "label": "第3章 子代理控制 - P03/18"}, {"file": "ch3/png/ch3-p004.png", "label": "第3章 子代理控制 - P04/18"}, {"file": "ch3/png/ch3-p005.png", "label": "第3章 子代理控制 - P05/18"}, {"file": "ch3/png/ch3-p006.png", "label": "第3章 子代理控制 - P06/18"}, {"file": "ch3/png/ch3-p007.png", "label": "第3章 子代理控制 - P07/18"}, {"file": "ch3/png/ch3-p008.png", "label": "第3章 子代理控制 - P08/18"}, {"file": "ch3/png/ch3-p009.png", "label": "第3章 子代理控制 - P09/18"}, {"file": "ch3/png/ch3-p010.png", "label": "第3章 子代理控制 - P10/18"}, {"file": "ch3/png/ch3-p011.png", "label": "第3章 子代理控制 - P11/18"}, {"file": "ch3/png/ch3-p012.png", "label": "第3章 子代理控制 - P12/18"}, {"file": "ch3/png/ch3-p013.png", "label": "第3章 子代理控制 - P13/18"}, {"file": "ch3/png/ch3-p014.png", "label": "第3章 子代理控制 - P14/18"}, {"file": "ch3/png/ch3-p015.png", "label": "第3章 子代理控制 - P15/18"}, {"file": "ch3/png/ch3-p016.png", "label": "第3章 子代理控制 - P16/18"}, {"file": "ch3/png/ch3-p017.png", "label": "第3章 子代理控制 - P17/18"}, {"file": "ch3/png/ch3-p018.png", "label": "第3章 子代理控制 - P18/18"}]}, {"key": "ch4", "label": "第4章 CI/CD 整合", "count": 15, "images": [{"file": "ch4/png/ch4-p001.png", "label": "第4章 CI/CD 整合 - P01/15"}, {"file": "ch4/png/ch4-p002.png", "label": "第4章 CI/CD 整合 - P02/15"}, {"file": "ch4/png/ch4-p003.png", "label": "第4章 CI/CD 整合 - P03/15"}, {"file": "ch4/png/ch4-p004.png", "label": "第4章 CI/CD 整合 - P04/15"}, {"file": "ch4/png/ch4-p005.png", "label": "第4章 CI/CD 整合 - P05/15"}, {"file": "ch4/png/ch4-p006.png", "label": "第4章 CI/CD 整合 - P06/15"}, {"file": "ch4/png/ch4-p007.png", "label": "第4章 CI/CD 整合 - P07/15"}, {"file": "ch4/png/ch4-p008.png", "label": "第4章 CI/CD 整合 - P08/15"}, {"file": "ch4/png/ch4-p009.png", "label": "第4章 CI/CD 整合 - P09/15"}, {"file": "ch4/png/ch4-p010.png", "label": "第4章 CI/CD 整合 - P10/15"}, {"file": "ch4/png/ch4-p011.png", "label": "第4章 CI/CD 整合 - P11/15"}, {"file": "ch4/png/ch4-p012.png", "label": "第4章 CI/CD 整合 - P12/15"}, {"file": "ch4/png/ch4-p013.png", "label": "第4章 CI/CD 整合 - P13/15"}, {"file": "ch4/png/ch4-p014.png", "label": "第4章 CI/CD 整合 - P14/15"}, {"file": "ch4/png/ch4-p015.png", "label": "第4章 CI/CD 整合 - P15/15"}]}, {"key": "ch5", "label": "第5章 權限資安", "count": 16, "images": [{"file": "ch5/png/ch5-p001.png", "label": "第5章 權限資安 - P01/16"}, {"file": "ch5/png/ch5-p002.png", "label": "第5章 權限資安 - P02/16"}, {"file": "ch5/png/ch5-p003.png", "label": "第5章 權限資安 - P03/16"}, {"file": "ch5/png/ch5-p004.png", "label": "第5章 權限資安 - P04/16"}, {"file": "ch5/png/ch5-p005.png", "label": "第5章 權限資安 - P05/16"}, {"file": "ch5/png/ch5-p006.png", "label": "第5章 權限資安 - P06/16"}, {"file": "ch5/png/ch5-p007.png", "label": "第5章 權限資安 - P07/16"}, {"file": "ch5/png/ch5-p008.png", "label": "第5章 權限資安 - P08/16"}, {"file": "ch5/png/ch5-p009.png", "label": "第5章 權限資安 - P09/16"}, {"file": "ch5/png/ch5-p010.png", "label": "第5章 權限資安 - P10/16"}, {"file": "ch5/png/ch5-p011.png", "label": "第5章 權限資安 - P11/16"}, {"file": "ch5/png/ch5-p012.png", "label": "第5章 權限資安 - P12/16"}, {"file": "ch5/png/ch5-p013.png", "label": "第5章 權限資安 - P13/16"}, {"file": "ch5/png/ch5-p014.png", "label": "第5章 權限資安 - P14/16"}, {"file": "ch5/png/ch5-p015.png", "label": "第5章 權限資安 - P15/16"}, {"file": "ch5/png/ch5-p016.png", "label": "第5章 權限資安 - P16/16"}]}, {"key": "ch6", "label": "第6章 成本優化", "count": 18, "images": [{"file": "ch6/png/ch6-p001.png", "label": "第6章 成本優化 - P01/18"}, {"file": "ch6/png/ch6-p002.png", "label": "第6章 成本優化 - P02/18"}, {"file": "ch6/png/ch6-p003.png", "label": "第6章 成本優化 - P03/18"}, {"file": "ch6/png/ch6-p004.png", "label": "第6章 成本優化 - P04/18"}, {"file": "ch6/png/ch6-p005.png", "label": "第6章 成本優化 - P05/18"}, {"file": "ch6/png/ch6-p006.png", "label": "第6章 成本優化 - P06/18"}, {"file": "ch6/png/ch6-p007.png", "label": "第6章 成本優化 - P07/18"}, {"file": "ch6/png/ch6-p008.png", "label": "第6章 成本優化 - P08/18"}, {"file": "ch6/png/ch6-p009.png", "label": "第6章 成本優化 - P09/18"}, {"file": "ch6/png/ch6-p010.png", "label": "第6章 成本優化 - P10/18"}, {"file": "ch6/png/ch6-p011.png", "label": "第6章 成本優化 - P11/18"}, {"file": "ch6/png/ch6-p012.png", "label": "第6章 成本優化 - P12/18"}, {"file": "ch6/png/ch6-p013.png", "label": "第6章 成本優化 - P13/18"}, {"file": "ch6/png/ch6-p014.png", "label": "第6章 成本優化 - P14/18"}, {"file": "ch6/png/ch6-p015.png", "label": "第6章 成本優化 - P15/18"}, {"file": "ch6/png/ch6-p016.png", "label": "第6章 成本優化 - P16/18"}, {"file": "ch6/png/ch6-p017.png", "label": "第6章 成本優化 - P17/18"}, {"file": "ch6/png/ch6-p018.png", "label": "第6章 成本優化 - P18/18"}]}, {"key": "ch7", "label": "第7章 生產工作流", "count": 19, "images": [{"file": "ch7/png/ch7-p001.png", "label": "第7章 生產工作流 - P01/19"}, {"file": "ch7/png/ch7-p002.png", "label": "第7章 生產工作流 - P02/19"}, {"file": "ch7/png/ch7-p003.png", "label": "第7章 生產工作流 - P03/19"}, {"file": "ch7/png/ch7-p004.png", "label": "第7章 生產工作流 - P04/19"}, {"file": "ch7/png/ch7-p005.png", "label": "第7章 生產工作流 - P05/19"}, {"file": "ch7/png/ch7-p006.png", "label": "第7章 生產工作流 - P06/19"}, {"file": "ch7/png/ch7-p007.png", "label": "第7章 生產工作流 - P07/19"}, {"file": "ch7/png/ch7-p008.png", "label": "第7章 生產工作流 - P08/19"}, {"file": "ch7/png/ch7-p009.png", "label": "第7章 生產工作流 - P09/19"}, {"file": "ch7/png/ch7-p010.png", "label": "第7章 生產工作流 - P10/19"}, {"file": "ch7/png/ch7-p011.png", "label": "第7章 生產工作流 - P11/19"}, {"file": "ch7/png/ch7-p012.png", "label": "第7章 生產工作流 - P12/19"}, {"file": "ch7/png/ch7-p013.png", "label": "第7章 生產工作流 - P13/19"}, {"file": "ch7/png/ch7-p014.png", "label": "第7章 生產工作流 - P14/19"}, {"file": "ch7/png/ch7-p015.png", "label": "第7章 生產工作流 - P15/19"}, {"file": "ch7/png/ch7-p016.png", "label": "第7章 生產工作流 - P16/19"}, {"file": "ch7/png/ch7-p017.png", "label": "第7章 生產工作流 - P17/19"}, {"file": "ch7/png/ch7-p018.png", "label": "第7章 生產工作流 - P18/19"}, {"file": "ch7/png/ch7-p019.png", "label": "第7章 生產工作流 - P19/19"}]}];
 
 let curGroup=0, curIdx=0, scale=1, tx=0, ty=0, dragging=false, dragX=0, dragY=0;
-const sidebar   = document.getElementById("sidebar");
-const viewer    = document.getElementById("viewer");
-const img       = document.getElementById("img");
-const thumbs    = document.getElementById("thumbs");
-const breadcrumb= document.getElementById("breadcrumb");
-const badge     = document.getElementById("zoom-badge");
-const counter   = document.getElementById("counter");
+const sidebar    = document.getElementById("sidebar");
+const viewer     = document.getElementById("viewer");
+const img        = document.getElementById("img");
+const thumbs     = document.getElementById("thumbs");
+const breadcrumb = document.getElementById("breadcrumb");
+const badge      = document.getElementById("zoom-badge");
+const counter    = document.getElementById("counter");
+const apBtn      = document.getElementById("autoplay-btn");
+const apMenu     = document.getElementById("autoplay-menu");
+const progressBar= document.getElementById("progress-bar");
+
+// autoplay state
+let apTimer=null, apDelay=3000, apLoop=true, apPlaying=false;
+
+function startProgress() {
+  progressBar.style.transition = "none";
+  progressBar.style.width = "0%";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    progressBar.style.transition = "width " + apDelay + "ms linear";
+    progressBar.style.width = "100%";
+  }));
+}
+
+function stopProgress() {
+  progressBar.style.transition = "none";
+  progressBar.style.width = "0%";
+}
+
+function apNext() {
+  const g = GROUPS[curGroup];
+  if (curIdx < g.images.length - 1) {
+    curIdx++;
+  } else if (apLoop) {
+    curIdx = 0;
+  } else {
+    stopAutoplay();
+    return;
+  }
+  buildThumbs();
+  loadImage();
+  startProgress();
+}
+
+function startAutoplay() {
+  apPlaying = true;
+  apBtn.innerHTML = "&#9646;&#9646; 暫停";
+  apBtn.classList.add("playing");
+  startProgress();
+  apTimer = setInterval(apNext, apDelay);
+}
+
+function stopAutoplay() {
+  apPlaying = false;
+  clearInterval(apTimer);
+  apTimer = null;
+  apBtn.innerHTML = "&#9654; 自動播放";
+  apBtn.classList.remove("playing");
+  stopProgress();
+}
+
+function toggleAutoplay() {
+  if (apPlaying) stopAutoplay(); else startAutoplay();
+}
+
+function toggleMenu(e) {
+  e.stopPropagation();
+  apMenu.classList.toggle("open");
+}
+
+function setDelay(sec, el) {
+  apDelay = sec * 1000;
+  document.querySelectorAll(".ap-item[data-sec]").forEach(item => {
+    item.classList.toggle("selected", item === el);
+    item.querySelector(".ap-check").textContent = item === el ? "✓" : "";
+  });
+  if (apPlaying) {
+    clearInterval(apTimer);
+    startProgress();
+    apTimer = setInterval(apNext, apDelay);
+  }
+  apMenu.classList.remove("open");
+}
+
+function toggleLoop() {
+  apLoop = !apLoop;
+  document.getElementById("loop-check").innerHTML = apLoop ? "&#9745;" : "&#9744;";
+}
+
+document.addEventListener("click", e => {
+  if (!document.getElementById("autoplay-wrap").contains(e.target)) {
+    apMenu.classList.remove("open");
+  }
+});
 
 function buildSidebar() {
   sidebar.innerHTML = "";
@@ -63,7 +180,7 @@ function buildSidebar() {
     const btn = document.createElement("button");
     btn.className = "grp-btn" + (gi === curGroup ? " active" : "");
     btn.innerHTML = '<span class="grp-label">' + g.label + '</span><span class="grp-sub">' + g.images.length + ' 頁</span>';
-    btn.addEventListener("click", () => switchGroup(gi));
+    btn.addEventListener("click", () => { if (apPlaying) stopAutoplay(); switchGroup(gi); });
     sidebar.appendChild(btn);
   });
 }
@@ -76,7 +193,7 @@ function buildThumbs() {
     const t = document.createElement("img");
     t.className = "thumb" + (i === curIdx ? " active" : "");
     t.src = im.file; t.alt = im.label;
-    t.addEventListener("click", () => { curIdx = i; buildThumbs(); loadImage(); });
+    t.addEventListener("click", () => { curIdx = i; buildThumbs(); loadImage(); if (apPlaying) { clearInterval(apTimer); startProgress(); apTimer = setInterval(apNext, apDelay); } });
     thumbs.appendChild(t);
   });
 }
@@ -122,11 +239,14 @@ window.addEventListener("mouseup", () => { dragging = false; viewer.classList.re
 viewer.addEventListener("dblclick", fitImage);
 
 window.addEventListener("keydown", e => {
+  if (e.key === " ") { e.preventDefault(); toggleAutoplay(); return; }
   const g = GROUPS[curGroup];
   if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+    if (apPlaying) { clearInterval(apTimer); startProgress(); apTimer = setInterval(apNext, apDelay); }
     if (curIdx < g.images.length - 1) { curIdx++; buildThumbs(); loadImage(); }
     else if (curGroup < GROUPS.length - 1) { switchGroup(curGroup + 1); }
   } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    if (apPlaying) { clearInterval(apTimer); startProgress(); apTimer = setInterval(apNext, apDelay); }
     if (curIdx > 0) { curIdx--; buildThumbs(); loadImage(); }
     else if (curGroup > 0) { curGroup--; curIdx = GROUPS[curGroup].images.length - 1; buildSidebar(); buildThumbs(); loadImage(); }
   } else if (e.key === "Home") { curIdx = 0; buildThumbs(); loadImage(); }
